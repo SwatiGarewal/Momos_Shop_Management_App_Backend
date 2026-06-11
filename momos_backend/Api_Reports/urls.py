@@ -7,5 +7,6 @@ urlpatterns = [
     path('api/reports/payment/', payment_report),
     path('api/reports/pivot/', pivot_report),
     path('api/reports/pdf-report/<str:report_type>/<str:from_date>/<str:to_date>/', generate_pdf_report),
+    path('api/reports/pdf-report/<str:from_date>/<str:to_date>/', generate_pdf_report),
     # path('api/reports/excel-report/', generate_excel_report),
 ]

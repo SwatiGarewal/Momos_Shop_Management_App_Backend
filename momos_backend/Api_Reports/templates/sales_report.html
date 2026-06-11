@@ -6,8 +6,8 @@
 <body>
 <center>
     <font size="7"><b>MOMO SHOP MANAGEMENT SYSTEM</b></font><br>
-    <font size="6"><b>SALES REPORT</b></font><br>
-    <font size="5"><b>{{ report_type }} REPORT</b></font>
+    <font size="6"><b>SALES {{ report_type }} REPORT</b></font><br>
+    
 </center>
 <hr>
 <table width="100%">
@@ -36,7 +36,7 @@
     <th>Total Taxable</th>
     <th>Total Payment Received</th>
 </tr>
-{% elif report_type == 'MONTHLY' %}
+{% elif report_type == 'MONTHLY' or report_type == '' %}
 <tr>
     <th>#</th>
     <th>Date</th>
@@ -72,7 +72,7 @@
         <td align="center">{{ item.total_discount }}</td>
         <td align="center">{{ item.total_taxable }}</td>
         <td align="center">{{ item.total_payment_received }}</td>
-    {% elif report_type == 'MONTHLY' %}
+    {% elif report_type == 'MONTHLY' or report_type == '' %}
         <td align="center">{{ item.date }}</td>
         <td align="center">{{ item.day_total_order }}</td>
         <td align="center">{{ item.day_total_quantity }}</td>
@@ -103,7 +103,7 @@
     <td align="center"><b>{{ sum_total_taxable }}</b></td>
     <td align="center"><b>{{ sum_total_payment_received }}</b></td>
 </tr>
-{% elif report_type == 'MONTHLY' %}
+{% elif report_type == 'MONTHLY' or report_type == '' %}
 <tr>
     <td colspan="2" align="center"><b>TOTAL</b></td>
     <td align="center"><b>{{ sum_day_total_order }}</b></td>

@@ -86,11 +86,9 @@ def get_date_range(request):
     from_date = datetime.strptime(from_date,'%d-%m-%Y').date()
     to_date = datetime.strptime(to_date,'%d-%m-%Y').date()
     return from_date, to_date
-def generate_pdf_report(request,report_type,from_date,to_date):
-    print("FROM =", from_date)
-    print("TO =", to_date)
-    from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
-    to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
+def generate_pdf_report(request,from_date=None,to_date=None,report_type=None):
+    from_date = datetime.strptime(from_date, "%d-%m-%Y").date()
+    to_date = datetime.strptime(to_date, "%d-%m-%Y").date()
     if not from_date or not to_date:return HttpResponse("from_date and to_date required",status=400)
     template = get_template('sales_report.html')
     # DAILY REPORT
@@ -120,7 +118,7 @@ def generate_pdf_report(request,report_type,from_date,to_date):
             'sum_discount':total_discount,
             'sum_taxable':total_taxable,}
     # MONTHLY REPORT
-    elif report_type == 'monthly':
+    elif report_type == 'monthly' or report_type is None:
         sales = (OrderDetails.objects.filter(date__range=[from_date,to_date]).values('date').annotate(
         day_total_order=Count('order',distinct=True),
         day_total_quantity=Sum('quantity'),
@@ -138,7 +136,7 @@ def generate_pdf_report(request,report_type,from_date,to_date):
         total_received = sum(item['day_total_payment_received']or 0 for item in sales)
         context = {
             'sales': sales,
-            'report_type': 'MONTHLY',
+            'report_type': report_type.upper() if report_type else '',
             'from_date': from_date,
             'to_date': to_date,
             'generated_on': now(),
