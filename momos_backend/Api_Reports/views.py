@@ -70,15 +70,12 @@ def payment_report(request):
 # PIVOT TABLE REPORT--------------------------------------------
 @api_view(['GET'])
 def pivot_report(request):
-    report = OrderDetails.objects.values(
-        'product__name',
-        'order__payment_status'
-    ).annotate(
-        total_quantity=Sum('quantity'),
-        total_sales=Sum('taxable_value')
-    )
+    report_type = request.GET.get('type', 'yearly')
+    report = OrderDetails.objects.values('product_id','order__payment_status').annotate(
+    total_quantity=Sum('quantity'),
+    total_sales=Sum('sale_value'),
+    total_taxable=Sum('taxable_value'))
     return Response(report)
-# -------------------------------------
 
 #pdf Report Generate--------------------------------
 def get_date_range(request):
@@ -86,12 +83,14 @@ def get_date_range(request):
     to_date = request.GET.get('to_date')
     if not from_date or not to_date:
         return None, None
-    from_date = datetime.strptime(from_date,"%Y-%m-%d").date()
-    to_date = datetime.strptime(to_date,"%Y-%m-%d").date()
+    from_date = datetime.strptime(from_date,'%d-%m-%Y').date()
+    to_date = datetime.strptime(to_date,'%d-%m-%Y').date()
     return from_date, to_date
-def generate_pdf_report(request):
-    report_type = request.GET.get('type')
-    from_date, to_date = get_date_range(request)
+def generate_pdf_report(request,report_type,from_date,to_date):
+    print("FROM =", from_date)
+    print("TO =", to_date)
+    from_date = datetime.strptime(from_date, "%Y-%m-%d").date()
+    to_date = datetime.strptime(to_date, "%Y-%m-%d").date()
     if not from_date or not to_date:return HttpResponse("from_date and to_date required",status=400)
     template = get_template('sales_report.html')
     # DAILY REPORT

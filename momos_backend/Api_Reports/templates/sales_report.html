@@ -13,9 +13,9 @@
 <table width="100%">
     <tr>
         <td>
-            <b>From:</b> {{ from_date }}
+            <b>From:</b> {{ from_date|date:"d-m-Y" }}
             &nbsp;&nbsp;&nbsp;
-            <b>To:</b> {{ to_date }}
+            <b>To:</b> {{ to_date|date:"d-m-Y" }}
         </td>
         <td align="right">
             <b>Generated On:</b>

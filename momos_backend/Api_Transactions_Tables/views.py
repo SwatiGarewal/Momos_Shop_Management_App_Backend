@@ -111,3 +111,10 @@ def order_details_list(request):
     orders = OrderDetails.objects.all()
     serializer = OrderDetailsSerializer(orders,many=True)
     return Response(serializer.data)
+
+#Order Summary----------------------------------------
+@api_view(['GET'])
+def order_summary_list(request):
+    orders = OrderSummary.objects.all()
+    serializer = OrderSummarySerializer(orders, many=True)
+    return Response(serializer.data)
