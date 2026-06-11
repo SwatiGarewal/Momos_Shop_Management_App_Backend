@@ -1,4 +1,5 @@
 from rest_framework.decorators import api_view
+from .serializers import OrderSummarySerializer, OrderDetailsSerializer
 from rest_framework.response import Response
 from .models import OrderSummary,OrderDetails,PaymentTransaction
 from Api_Master_Tables.models import ProductMaster,PaymentModeMaster
@@ -102,3 +103,11 @@ def create_payment(request):
         "Order ID": order.order_id,
         "Amount Received": payment.amount_received,
         "Payment Mode": payment.payment_mode.name})
+
+# Order Details------------------------
+
+@api_view(['GET'])
+def order_details_list(request):
+    orders = OrderDetails.objects.all()
+    serializer = OrderDetailsSerializer(orders,many=True)
+    return Response(serializer.data)

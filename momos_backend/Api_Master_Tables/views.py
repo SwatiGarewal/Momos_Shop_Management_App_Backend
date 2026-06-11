@@ -31,7 +31,7 @@ def add_product(request):
    serializer = ProductSerializer(data=request.data)
    if serializer.is_valid():
         serializer.save()
-        return Response({'message': 'ProductMaster Added Successfully'})
+        return Response({'message': 'Product Added Successfully'})
    return Response(serializer.errors)
 
 # GET SINGLE PRODUCT-------------------------------------------
@@ -53,34 +53,28 @@ def update_product(request, id):
     serializer = ProductSerializer(product, data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return Response({'message': 'ProductMaster Updated Successfully'})
+        return Response({'message': 'Product Updated Successfully'})
     return Response(serializer.errors)
 
-# DEACTIVATE PRODUCT------------------------------------------------
+#PRODUCT STATUS------------------------------------------------
 @api_view(['PUT'])
 @permission_classes([IsAdminUser])
-def deactivate_product(request, id):
+def update_product_status(request, id):
     if not request.user.is_staff:
        return Response({"error": "Only Admin can perform this action"})
     if not request.user.is_active:
-       return Response({"error": "User account is deactivated"})
+        return Response({"error": "User account is deactivated"})
     product = get_object_or_404(ProductMaster,id=id)
-    product.is_active = False
+    is_active = request.data.get('is_active')
+    if is_active is None:return Response({"error":"is_active field is required"},status=400)
+    product.is_active = is_active
     product.save()
-    return Response({'message': 'ProductMaster Deactivated Successfully'})
-
-# ACTIVATE PRODUCT-----------------------------------------------
-@api_view(['PUT'])
-@permission_classes([IsAdminUser])
-def activate_product(request, id):
-    if not request.user.is_staff:
-       return Response({"error": "Only Admin can perform this action"})
-    if not request.user.is_active:
-       return Response({"error": "User account is deactivated"})
-    product = get_object_or_404(ProductMaster,id=id)
-    product.is_active = True
-    product.save()
-    return Response({'message': 'ProductMaster Activated Successfully'})
+    return Response({
+        'message':
+        'Product status updated successfully',
+        'is_active':
+        product.is_active
+    })
 
 #LOGIN USER---------------------------------------------------------------
 @api_view(['POST'])

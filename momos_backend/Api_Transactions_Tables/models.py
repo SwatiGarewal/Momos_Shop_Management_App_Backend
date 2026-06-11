@@ -108,25 +108,36 @@ class PaymentTransaction(models.Model):
     amount_received = models.DecimalField(max_digits=10,decimal_places=2,default=Decimal('0.00'))
     payment_mode = models.ForeignKey(PaymentModeMaster,on_delete=models.CASCADE)    
     remarks = models.TextField(null=True,blank=True)
-    def save(self, *args, **kwargs):
-        # custom FY payment id
-        if not self.id:
-            current_date = date.today()
-            current_year = current_date.year
-            current_month = current_date.month
-            if current_month >= 4:
-                start_year = current_year
-                end_year = current_year + 1
-            else:
-                start_year = current_year - 1
-                end_year = current_year
-            fy_start = date(start_year, 4, 1)
-            fy_end = date(end_year, 3, 31)
-            last_payment = PaymentTransaction.objects.filter(date__range=[fy_start, fy_end]).order_by('-payment_id').first()
-            if last_payment:
-                self.payment_id = (last_payment.payment_id + 1)
-            else:
-                self.payment_id = 1
-        super().save(*args, **kwargs)
+def save(self, *args, **kwargs):
+    # custom FY payment id
+    if not self.id:
+        current_date = date.today()
+        current_year = current_date.year
+        current_month = current_date.month
+        if current_month >= 4:
+            start_year = current_year
+            end_year = current_year + 1
+        else:
+            start_year = current_year - 1
+            end_year = current_year
+        fy_start = date(start_year, 4, 1)
+        fy_end = date(end_year, 3, 31)
+        last_payment = (
+            PaymentTransaction.objects
+            .filter(date__range=[fy_start, fy_end])
+            .order_by('-payment_id')
+            .first()
+        )
+        if last_payment:
+            self.payment_id = (
+                last_payment.payment_id + 1
+            )
+        else:
+            self.payment_id = 1
+    super().save(*args, **kwargs)
+    # PAYMENT STATUS UPDATE
+    self.order.payment_status = "Paid"
+    self.order.save(
+        update_fields=['payment_status']) 
     def __str__(self):
         return str(self.payment_id)
