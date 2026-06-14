@@ -1,8 +1,8 @@
 from rest_framework.decorators import api_view
-from .serializers import OrderSummarySerializer, OrderDetailsSerializer
+from .serializers import *
 from rest_framework.response import Response
-from .models import OrderSummary,OrderDetails,PaymentTransaction
-from Api_Master_Tables.models import ProductMaster,PaymentModeMaster
+from .models import *
+from Api_Master_Tables.models import *
 from django.shortcuts import get_object_or_404
 from decimal import Decimal
 from rest_framework.permissions import IsAuthenticated
@@ -10,6 +10,8 @@ from rest_framework.decorators import permission_classes
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
+from datetime import datetime
+
 
 # Create your views here.
 
@@ -71,7 +73,7 @@ def create_order(request):
 def create_payment(request):
     if not request.user.is_active:
        return Response({"error": "User account is deactivated"})
-    order_id = request.data['order']
+    order_id = request.data['order_ID']
     amount_received = Decimal(request.data['amount_received'])
     payment_mode_name = request.data['payment_mode']    
     remarks = request.data.get('remarks','')
@@ -107,14 +109,18 @@ def create_payment(request):
 # Order Details------------------------
 
 @api_view(['GET'])
-def order_details_list(request):
-    orders = OrderDetails.objects.all()
+def order_details_list(request, from_date, to_date):
+    from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
+    to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
+    orders = OrderDetails.objects.filter(date__range=[from_date, to_date])
     serializer = OrderDetailsSerializer(orders,many=True)
     return Response(serializer.data)
 
 #Order Summary----------------------------------------
 @api_view(['GET'])
-def order_summary_list(request):
-    orders = OrderSummary.objects.all()
-    serializer = OrderSummarySerializer(orders, many=True)
+def order_summary_list(request, from_date, to_date):
+    from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
+    to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
+    orders = OrderSummary.objects.filter(date__range=[from_date, to_date])
+    serializer = OrderSummarySerializer(orders,many=True)
     return Response(serializer.data)

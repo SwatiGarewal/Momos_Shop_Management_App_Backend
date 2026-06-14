@@ -54,6 +54,7 @@ class OrderSummary(models.Model):
 class OrderDetails(models.Model):
     date = models.DateField(auto_now_add=True)
     order_details_id = models.PositiveIntegerField(editable=False,default=1)
+    product_name = models.CharField(max_length=100,blank=True)
     order = models.ForeignKey(OrderSummary,on_delete=models.CASCADE,related_name='items')
     product = models.ForeignKey(ProductMaster,on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
@@ -95,6 +96,7 @@ class OrderDetails(models.Model):
                 self.order_details_id = (last_detail.order_details_id + 1)
             else:
                 self.order_details_id = 1
+        self.product_name = self.product.name
         super().save(*args, **kwargs)
     def __str__(self):
         return str(self.order_details_id)

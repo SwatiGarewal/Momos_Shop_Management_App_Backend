@@ -5,11 +5,11 @@
 </head>
 <body>
 <center>
-    <font size="7"><b>MOMO SHOP MANAGEMENT SYSTEM</b></font><br>
-    <font size="6"><b>SALES {{ report_type }} REPORT</b></font><br>
-    
+    <font size="7"><b>MOMO SHOP MANAGEMENT SYSTEM</b></font><br><br>
+    <font size="6"><b>SALES REPORT</b></font><br><br>
 </center>
 <hr>
+
 <table width="100%">
     <tr>
         <td>
@@ -23,34 +23,13 @@
         </td>
     </tr>
 </table>
+
 <br>
 <table border="1" width="100%" cellpadding="4">
-{% if report_type == 'YEARLY' %}
-<tr>
-    <th>#</th>
-    <th>Month</th>
-    <th>Total Orders</th>
-    <th>Total Items Sold</th>
-    <th>Total Sale</th>
-    <th>Total Discount</th>
-    <th>Total Taxable</th>
-    <th>Total Payment Received</th>
-</tr>
-{% elif report_type == 'MONTHLY' or report_type == '' %}
-<tr>
-    <th>#</th>
-    <th>Date</th>
-    <th>Total Orders</th>
-    <th>Total Quantity</th>
-    <th>Total Sale</th>
-    <th>Total Discount</th>
-    <th>Total Taxable</th>
-    <th>Total Payment Received</th>
-</tr>
-{% else %}
 <tr>
     <th>#</th>
     <th>Order ID</th>
+    <th>Date</th>
     <th>Time</th>
     <th>Product Name</th>
     <th>Quantity</th>
@@ -60,62 +39,32 @@
     <th>Taxable</th>
     <th>Payment Status</th>
 </tr>
-{% endif %}
+
 {% for item in sales %}
 <tr>
     <td align="center">{{ forloop.counter }}</td>
-    {% if report_type == 'YEARLY' %}
-        <td align="center">{{ item.month_name }}</td>
-        <td align="center">{{ item.total_order }}</td>
-        <td align="center">{{ item.total_item_sold }}</td>
-        <td align="center">{{ item.total_sale }}</td>
-        <td align="center">{{ item.total_discount }}</td>
-        <td align="center">{{ item.total_taxable }}</td>
-        <td align="center">{{ item.total_payment_received }}</td>
-    {% elif report_type == 'MONTHLY' or report_type == '' %}
-        <td align="center">{{ item.date }}</td>
-        <td align="center">{{ item.day_total_order }}</td>
-        <td align="center">{{ item.day_total_quantity }}</td>
-        <td align="center">{{ item.day_total_sale }}</td>
-        <td align="center">{{ item.day_total_discount }}</td>
-        <td align="center">{{ item.day_total_taxable }}</td>
-        <td align="center">{{ item.day_total_payment_received }}</td>
-    {% else %}
-        <td align="center">{{ item.order.order_id }}</td>
-        <td align="center">{{ item.order.time }}</td>
-        <td align="center">{{ item.product.name }}</td>
-        <td align="center">{{ item.quantity }}</td>
-        <td align="center">{{ item.price }}</td>
-        <td align="center">{{ item.sale_value }}</td>
-        <td align="center">{{ item.discount_rupees }}</td>
-        <td align="center">{{ item.taxable_value }}</td>
-        <td align="center">{{ item.order.payment_status }}</td>
-    {% endif %}
-</tr>
-{% endfor %}
-{% if report_type == 'YEARLY' %}
+    <td align="center">{{ item.order_id }}</td>
+    <td align="center">{{ item.date }}</td>
+    <td align="center">{{ item.time }}</td>
+    <td align="center">
+    {% for p in item.items.all %}
+    {{ p.product.name }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+    </td>
+    <td align="center">
+    {% for p in item.items.all %}
+    {{ p.quantity }}{% if not forloop.last %}, {% endif %}
+    {% endfor %}
+    </td>
+    <td align="center">{{ item.rates }}</td>
+    <td align="center">{{ item.total_sale_value }}</td>
+    <td align="center">{{ item.total_discount_value }}</td>
+    <td align="center">{{ item.total_taxable_value }}</td>
+    <td align="center">{{ item.payment_status }}</td>
+    </tr>
+    {% endfor %}
 <tr>
-    <td colspan="2" align="center"><b>TOTAL</b></td>
-    <td align="center"><b>{{ sum_total_order }}</b></td>
-    <td align="center"><b>{{ sum_total_item_sold }}</b></td>
-    <td align="center"><b>{{ sum_total_sale }}</b></td>
-    <td align="center"><b>{{ sum_total_discount }}</b></td>
-    <td align="center"><b>{{ sum_total_taxable }}</b></td>
-    <td align="center"><b>{{ sum_total_payment_received }}</b></td>
-</tr>
-{% elif report_type == 'MONTHLY' or report_type == '' %}
-<tr>
-    <td colspan="2" align="center"><b>TOTAL</b></td>
-    <td align="center"><b>{{ sum_day_total_order }}</b></td>
-    <td align="center"><b>{{ sum_day_total_quantity }}</b></td>
-    <td align="center"><b>{{ sum_day_total_sale }}</b></td>
-    <td align="center"><b>{{ sum_day_total_discount }}</b></td>
-    <td align="center"><b>{{ sum_day_total_taxable }}</b></td>
-    <td align="center"><b>{{ sum_day_total_payment_received }}</b></td>
-</tr>
-{% else %}
-<tr>
-    <td colspan="4" align="center"><b>TOTAL</b></td>
+    <td colspan="5" align="center"><b>TOTAL</b></td>
     <td align="center"><b>{{ sum_quantity }}</b></td>
     <td align="center"><b>{{ sum_price }}</b></td>
     <td align="center"><b>{{ sum_sale }}</b></td>
@@ -123,66 +72,34 @@
     <td align="center"><b>{{ sum_taxable }}</b></td>
     <td></td>
 </tr>
-{% endif %}
 </table>
+
 <br>
 <hr>
-<center>
     <font size="5"><b>SUMMARY</b></font>
-</center><br>
+<br>
+<br>
 <table width="100%">
-{% if report_type == 'YEARLY' %}
 <tr>
     <td><b>Total Orders</b></td>
-    <td>: {{ sum_total_order }}</td>
+    <td ><b>: {{ total_orders }}</b></td>
     <td><b>Total Discount</b></td>
-    <td align="right">
-        ₹ {{ sum_total_discount }}
-    </td>
+    <td><b>: {{ total_discount }}</b></td>
 </tr>
 <tr>
     <td><b>Total Items Sold</b></td>
-    <td>: {{ sum_total_item_sold }}</td>
+    <td><b>: {{ total_qty }}</b></td>
     <td><b>Total Taxable Amount</b></td>
-    <td align="right">
-        ₹ {{ sum_total_taxable }}
-    </td>
+    <td><b>: {{ total_taxable }}</b></td>
 </tr>
 <tr>
     <td><b>Total Sale Amount</b></td>
-    <td>: ₹ {{ sum_total_sale }}</td>
-    <td><b>Total Payment Received</b></td>
-    <td align="right">
-        ₹ {{ sum_total_payment_received }}
-    </td>
-</tr>
-{% else %}
-<tr>
-    <td><b>Total Orders</b></td>
-    <td>: {{ total_orders }}</td>
-    <td><b>Total Discount</b></td>
-    <td align="right">
-        ₹ {{ total_discount }}
-    </td>
-</tr>
-<tr>
-    <td><b>Total Items Sold</b></td>
-    <td>: {{ total_qty }}</td>
-    <td><b>Total Taxable Amount</b></td>
-    <td align="right">
-        ₹ {{ total_taxable }}
-    </td>
-</tr>
-<tr>
-    <td><b>Total Sale Amount</b></td>
-    <td>: ₹ {{ total_sale }}</td>
+    <td><b>: {{ total_sale }}</b></td>
     <td><b>Total Received</b></td>
-    <td align="right">
-        ₹ {{ total_received }}
-    </td>
+    <td><b>: {{ total_received }}</b></td>
 </tr>
-{% endif %}
 </table>
+
 <hr>
 <center>
     <b>-----------------------------Thank You For Your Business!-----------------------------</b>
