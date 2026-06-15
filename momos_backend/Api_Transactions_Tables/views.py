@@ -73,7 +73,7 @@ def create_order(request):
 def create_payment(request):
     if not request.user.is_active:
        return Response({"error": "User account is deactivated"})
-    order_id = request.data['order_ID']
+    order_id = request.data['order']
     amount_received = Decimal(request.data['amount_received'])
     payment_mode_name = request.data['payment_mode']    
     remarks = request.data.get('remarks','')
@@ -98,7 +98,7 @@ def create_payment(request):
        order.payment_status = 'Paid'
     else:
        order.payment_status = 'Partial'
-       order.save()
+    order.save()
     return Response({
         "message": "Payment Successful",
         "Payment ID": payment.payment_id,
