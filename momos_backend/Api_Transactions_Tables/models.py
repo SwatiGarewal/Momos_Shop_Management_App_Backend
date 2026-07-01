@@ -1,5 +1,5 @@
 from django.db import models
-from Api_Master_Tables.models import ProductMaster,PaymentModeMaster
+from Api_Master_Tables.models import *
 from datetime import date
 from decimal import Decimal
 from django.core.exceptions import ValidationError
@@ -72,12 +72,6 @@ class OrderDetails(models.Model):
         self.discount_rupees = (self.sale_value * self.discount_percent) / Decimal('100')
         # taxable value
         self.taxable_value = (self.sale_value - self.discount_rupees)
-        # stock deduction
-        if not self.id and self.product.stock < self.quantity:
-           raise ValidationError("Not enough stock")
-        if not self.id:
-            self.product.stock -= self.quantity
-            self.product.save()
         # custom FY id
         if not self.id:
             current_date = date.today()
@@ -91,11 +85,11 @@ class OrderDetails(models.Model):
                 end_year = current_year
             fy_start = date(start_year, 4, 1)
             fy_end = date(end_year, 3, 31)
-            last_detail = OrderDetails.objects.filter(date__range=[fy_start, fy_end]).order_by('-order_details_id').first()
+            last_detail = OrderDetails.objects.filter(order=self.order).order_by('-order_details_id').first()
             if last_detail:
-                self.order_details_id = (last_detail.order_details_id + 1)
+               self.order_details_id = last_detail.order_details_id + 1
             else:
-                self.order_details_id = 1
+               self.order_details_id = 1
         self.product_name = self.product.name
         super().save(*args, **kwargs)
     def __str__(self):
@@ -110,9 +104,9 @@ class PaymentTransaction(models.Model):
     amount_received = models.DecimalField(max_digits=10,decimal_places=2,default=Decimal('0.00'))
     payment_mode = models.ForeignKey(PaymentModeMaster,on_delete=models.CASCADE)    
     remarks = models.TextField(null=True,blank=True)
-def save(self, *args, **kwargs):
+    def save(self, *args, **kwargs):
     # custom FY payment id
-    if not self.id:
+     if not self.id:
         current_date = date.today()
         current_year = current_date.year
         current_month = current_date.month
@@ -136,10 +130,10 @@ def save(self, *args, **kwargs):
             )
         else:
             self.payment_id = 1
-    super().save(*args, **kwargs)
+     super().save(*args, **kwargs)
     # PAYMENT STATUS UPDATE
-    self.order.payment_status = "Paid"
-    self.order.save(
+     self.order.payment_status = "Paid"
+     self.order.save(
         update_fields=['payment_status']) 
     def __str__(self):
         return str(self.payment_id)

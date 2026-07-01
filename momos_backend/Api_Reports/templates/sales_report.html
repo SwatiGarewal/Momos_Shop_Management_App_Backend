@@ -27,7 +27,7 @@
 <br>
 <table border="1" width="100%" cellpadding="4">
 <tr>
-    <th>#</th>
+    <th>S.No</th>
     <th>Order ID</th>
     <th>Date</th>
     <th>Time</th>
@@ -39,30 +39,29 @@
     <th>Taxable</th>
     <th>Payment Status</th>
 </tr>
+{% for sale in sales %}
+    {% for detail in sale.details %}
+    <tr>
+        {% if forloop.first %}
+            <td align="center" rowspan="{{ sale.details.count }}">{{ forloop.parentloop.counter }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.order_id }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.date|date:"F d, Y" }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.time|time:"g:i a" }}</td>
+        {% endif %}
 
-{% for item in sales %}
-<tr>
-    <td align="center">{{ forloop.counter }}</td>
-    <td align="center">{{ item.order_id }}</td>
-    <td align="center">{{ item.date }}</td>
-    <td align="center">{{ item.time }}</td>
-    <td align="center">
-    {% for p in item.items.all %}
-    {{ p.product.name }}{% if not forloop.last %}, {% endif %}
-    {% endfor %}
-    </td>
-    <td align="center">
-    {% for p in item.items.all %}
-    {{ p.quantity }}{% if not forloop.last %}, {% endif %}
-    {% endfor %}
-    </td>
-    <td align="center">{{ item.rates }}</td>
-    <td align="center">{{ item.total_sale_value }}</td>
-    <td align="center">{{ item.total_discount_value }}</td>
-    <td align="center">{{ item.total_taxable_value }}</td>
-    <td align="center">{{ item.payment_status }}</td>
+        <td>{{ forloop.counter }}. {{ detail.product.name }}</td>
+        <td align="center">{{ detail.quantity }}</td>
+        <td align="center">{{ detail.price }}</td>
+
+        {% if forloop.first %}
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.total_sale_value }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.total_discount_value }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.total_taxable_value }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.payment_status }}</td>
+        {% endif %}
     </tr>
     {% endfor %}
+{% endfor %}
 <tr>
     <td colspan="5" align="center"><b>TOTAL</b></td>
     <td align="center"><b>{{ sum_quantity }}</b></td>
@@ -82,7 +81,7 @@
 <table width="100%">
 <tr>
     <td><b>Total Orders</b></td>
-    <td ><b>: {{ total_orders }}</b></td>
+    <td><b>: {{ total_orders }}</b></td>
     <td><b>Total Discount</b></td>
     <td><b>: {{ total_discount }}</b></td>
 </tr>
@@ -96,7 +95,7 @@
     <td><b>Total Sale Amount</b></td>
     <td><b>: {{ total_sale }}</b></td>
     <td><b>Total Received</b></td>
-    <td><b>: {{ total_taxable }}</b></td>
+    <td><b>: {{ total_received }}</b></td>
 </tr>
 </table>
 
