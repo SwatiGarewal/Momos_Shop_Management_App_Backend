@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sales Report</title>
+</head>
+<body>
+<center>
+    <font size="7"><b>MOMO SHOP MANAGEMENT SYSTEM</b></font><br><br>
+    <font size="6"><b>SALES REPORT</b></font><br><br>
+</center>
+<hr>
+
+<table width="100%">
+    <tr>
+        <td>
+            <b>From:</b> {{ from_date|date:"d-m-Y" }}
+            &nbsp;&nbsp;&nbsp;
+            <b>To:</b> {{ to_date|date:"d-m-Y" }}
+        </td>
+        <td align="right">
+            <b>Generated On:</b>
+            {{ generated_on|date:"d-M-Y h:i A" }}
+        </td>
+    </tr>
+</table>
+
+<br>
+<table border="1" width="100%" cellpadding="4">
+<tr>
+    <th>S.No</th>
+    <th>Order ID</th>
+    <th>Date</th>
+    <th>Time</th>
+    <th>Product Name</th>
+    <th>Quantity</th>
+    <th>Rate</th>
+    <th>Sale</th>
+    <th>Discount</th>
+    <th>Taxable</th>
+    <th>Payment Status</th>
+</tr>
+{% for sale in sales %}
+    {% for detail in sale.details %}
+    <tr>
+        {% if forloop.first %}
+            <td align="center" rowspan="{{ sale.details.count }}">{{ forloop.parentloop.counter }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.order_id }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.date|date:"F d, Y" }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.time|time:"g:i a" }}</td>
+        {% endif %}
+
+        <td>{{ forloop.counter }}. {{ detail.product.name }}</td>
+        <td align="center">{{ detail.quantity }}</td>
+        <td align="center">{{ detail.price }}</td>
+
+        {% if forloop.first %}
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.total_sale_value }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.total_discount_value }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.total_taxable_value }}</td>
+            <td align="center" rowspan="{{ sale.details.count }}">{{ sale.payment_status }}</td>
+        {% endif %}
+    </tr>
+    {% endfor %}
+{% endfor %}
+<tr>
+    <td colspan="5" align="center"><b>TOTAL</b></td>
+    <td align="center"><b>{{ sum_quantity }}</b></td>
+    <td align="center"><b>{{ sum_price }}</b></td>
+    <td align="center"><b>{{ sum_sale }}</b></td>
+    <td align="center"><b>{{ sum_discount }}</b></td>
+    <td align="center"><b>{{ sum_taxable }}</b></td>
+    <td></td>
+</tr>
+</table>
+
+<br>
+<hr>
+    <font size="5"><b>SUMMARY</b></font>
+<br>
+<br>
+<table width="100%">
+<tr>
+    <td><b>Total Orders</b></td>
+    <td><b>: {{ total_orders }}</b></td>
+    <td><b>Total Discount</b></td>
+    <td><b>: {{ total_discount }}</b></td>
+</tr>
+<tr>
+    <td><b>Total Items Sold</b></td>
+    <td><b>: {{ total_qty }}</b></td>
+    <td><b>Total Taxable Amount</b></td>
+    <td><b>: {{ total_taxable }}</b></td>
+</tr>
+<tr>
+    <td><b>Total Sale Amount</b></td>
+    <td><b>: {{ total_sale }}</b></td>
+    <td><b>Total Received</b></td>
+    <td><b>: {{ total_received }}</b></td>
+</tr>
+</table>
+
+<hr>
+<center>
+    <b>-----------------------------Thank You For Your Business!-----------------------------</b>
+</center>
+</body>
+</html>
