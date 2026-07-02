@@ -189,7 +189,9 @@ def update_product_status(request, id):
 @api_view(['POST'])
 @permission_classes([IsAdminUser])
 def add_payment_mode(request):
-    name = request.data.get('name')
+    name = " ".join(request.data.get("name").split()).strip()
+    if PaymentModeMaster.objects.filter(name__iexact=name).exists():
+       return Response({"error": "Payment Mode Already Exists"})
     payment_mode = PaymentModeMaster.objects.create(name=name)
     return Response({
         "message": "Payment Mode Added Successfully",

@@ -28,7 +28,7 @@ def create_order(request):
       return Response({"error": "No items provided"})
     cash_discount = Decimal(request.data.get('cash_discount', '0.00'))
     # create order summary
-    order = OrderSummary.objects.create()
+    order = OrderSummary.objects.create(created_by=request.user)
     created_items = []
     # loop through all items
     for item in items:
@@ -64,13 +64,15 @@ def create_order(request):
     return Response({
     "message": "Order Created Successfully",
     "order_id": order.order_id,
+    "payment_status": order.payment_status,
     "total_items": len(created_items),
     "items": created_items,
     "total_sale_value": order.total_sale_value,
     "total_discount": order.total_discount_value,
     "total_taxable_value": order.total_taxable_value,
     "cash_discount": order.cash_discount,
-    "final_bill": order.net_amount_payable})
+    "final_bill": order.net_amount_payable,
+    "balance": order.net_amount_payable})
   except ValidationError as e:
         return Response({"error": str(e)})
 
@@ -254,26 +256,26 @@ def create_payment(request):
        return Response({"error": "User account is deactivated"})
     order_id = request.data['order']
     amount_received = Decimal(request.data['amount_received'])
-    payment_mode_name = request.data['payment_mode']    
+    payment_mode_id = request.data["payment_mode_id"]   
     remarks = request.data.get('remarks','')
-    payment_mode = get_object_or_404(PaymentModeMaster,name=payment_mode_name)
+    payment_mode = get_object_or_404(PaymentModeMaster,payment_mode_id=payment_mode_id,active_status=True)
     order = get_object_or_404(OrderSummary,order_id=order_id)
     if amount_received > order.net_amount_payable:
        return Response({"error": "Amount exceeds payable bill amount"})
     total_paid = PaymentTransaction.objects.filter(order=order).aggregate(total=Sum('amount_received'))['total'] or Decimal('0.00')
     remaining_amount = (order.net_amount_payable - total_paid)
     if amount_received > remaining_amount:
+       return Response({"error": "Payment exceeds remaining balance"})
+    balance = remaining_amount - amount_received
+    if amount_received > remaining_amount:
        return Response({"error": "Payment exceeds remaining amount"})
-    existing_payment = PaymentTransaction.objects.filter(order=order).exists()
-    if existing_payment:
-        return Response({"error": "Payment already done for this order"})
     payment = PaymentTransaction.objects.create(
         order=order,
         amount_received=amount_received,
+        balance=balance,
         payment_mode=payment_mode,
         remarks=remarks)
-    new_total_paid = total_paid + amount_received
-    if new_total_paid >= order.net_amount_payable:
+    if balance == 0:
        order.payment_status = 'Paid'
     else:
        order.payment_status = 'Partial'
@@ -282,8 +284,12 @@ def create_payment(request):
         "message": "Payment Successful",
         "Payment ID": payment.payment_id,
         "Order ID": order.order_id,
+        "Bill Amount": order.net_amount_payable,
         "Amount Received": payment.amount_received,
-        "Payment Mode": payment.payment_mode.name})
+        "Balance": payment.balance,
+        "Payment Mode ID": payment.payment_mode.payment_mode_id,
+        "Payment Mode": payment.payment_mode.name,
+        "Payment Status": order.payment_status})
 
 # Order Details------------------------
 
@@ -297,9 +303,12 @@ def order_details_list(request, from_date, to_date):
 
 #Order Summary----------------------------------------
 @api_view(['GET'])
-def order_summary_list(request, from_date, to_date):
-    from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
-    to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
-    orders = OrderSummary.objects.filter(date__range=[from_date, to_date])
+def order_summary_list(request, order_id=None, from_date=None, to_date=None):
+    if order_id:
+        orders = OrderSummary.objects.filter(order_id=order_id)
+    else:
+        from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
+        to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
+        orders = OrderSummary.objects.filter(date__range=[from_date, to_date])
     serializer = OrderSummarySerializer(orders,many=True)
     return Response(serializer.data)

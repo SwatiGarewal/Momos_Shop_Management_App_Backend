@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/transactions-tables/create-payment/',create_payment),
     path('api/transactions-tables/order-details/<str:from_date>/<str:to_date>/',order_details_list),
     path('api/transactions-tables/order-summary/<str:from_date>/<str:to_date>/', order_summary_list),
+    path('api/transactions-tables/order-summary/<int:order_id>/',order_summary_list),
 ]
