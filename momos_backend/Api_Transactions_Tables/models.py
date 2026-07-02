@@ -12,10 +12,7 @@ class OrderSummary(models.Model):
     date = models.DateField(auto_now_add=True)
     order_id = models.PositiveIntegerField(editable=False,default=1)
     time = models.TimeField(auto_now_add=True)
-    created_by = models.ForeignKey(
-    User,
-    on_delete=models.SET_NULL,
-    null=True)
+    created_by = models.ForeignKey(User,on_delete=models.SET_NULL,null=True,blank=True)
     total_sale_value = models.DecimalField(max_digits=10,decimal_places=2,default=Decimal('0.00'))
     total_discount_value = models.DecimalField(max_digits=10,decimal_places=2,default=Decimal('0.00'))
     total_taxable_value = models.DecimalField(max_digits=10,decimal_places=2,default=Decimal('0.00'))
@@ -102,6 +99,7 @@ class PaymentTransaction(models.Model):
     order = models.ForeignKey(OrderSummary,on_delete=models.CASCADE)
     time = models.TimeField(auto_now_add=True)
     amount_received = models.DecimalField(max_digits=10,decimal_places=2,default=Decimal('0.00'))
+    balance = models.DecimalField(max_digits=10,decimal_places=2,default=Decimal('0.00'))
     payment_mode = models.ForeignKey(PaymentModeMaster,on_delete=models.CASCADE)    
     remarks = models.TextField(null=True,blank=True)
     def save(self, *args, **kwargs):
