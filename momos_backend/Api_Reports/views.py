@@ -77,7 +77,7 @@ def generate_pdf_report(request, from_date=None, to_date=None):
     total_discount = sales.aggregate(Sum('total_discount_value'))['total_discount_value__sum'] or 0
     total_taxable = sales.aggregate(Sum('total_taxable_value'))['total_taxable_value__sum'] or 0
     total_received = PaymentTransaction.objects.filter(order__in=sales).aggregate(Sum('amount_received'))['amount_received__sum'] or 0
-    
+    total_balance = total_taxable - total_received
     for order in sales:
         order.details = OrderDetails.objects.filter(order=order)
         
@@ -92,6 +92,7 @@ def generate_pdf_report(request, from_date=None, to_date=None):
         'total_discount': total_discount,
         'total_taxable': total_taxable,
         'total_received': total_received,
+        'total_balance':total_balance,
         'sum_quantity': total_qty,
         'sum_price': OrderDetails.objects.filter(order__in=sales).aggregate(Sum('price'))['price__sum'] or 0,
         'sum_sale': total_sale,
@@ -123,7 +124,8 @@ def generate_excel_report(request, from_date, to_date):
     total_discount = sales.aggregate(Sum('total_discount_value'))['total_discount_value__sum'] or 0
     total_taxable = sales.aggregate(Sum('total_taxable_value'))['total_taxable_value__sum'] or 0
     total_received = PaymentTransaction.objects.filter(order__in=sales).aggregate(Sum('amount_received'))['amount_received__sum'] or 0
-    
+    total_balance = total_taxable - total_received
+
     wb = Workbook()
     ws = wb.active
     ws.title = "Sales Report"
@@ -214,54 +216,47 @@ def generate_excel_report(request, from_date, to_date):
     
     ws.merge_cells(start_row=summary_row, start_column=1, end_row=summary_row, end_column=3)
     ws.cell(row=summary_row, column=1).value = "SUMMARY"
-    ws.cell(row=summary_row, column=1).font = Font(size=14, bold=True)
+    ws.cell(row=summary_row, column=1).font = Font(size=14, bold=True, color="1F4E78") # हल्का नीला/प्रोफेशनल रंग
     ws.cell(row=summary_row, column=1).alignment = Alignment(horizontal='left', vertical='center')
     
-    
-    ws.merge_cells(start_row=summary_row + 2, start_column=1, end_row=summary_row + 2, end_column=3)
-    ws.cell(row=summary_row + 2, column=1).value = "Total Orders"
-    ws.merge_cells(start_row=summary_row + 2, start_column=4, end_row=summary_row + 2, end_column=5)
-    ws.cell(row=summary_row + 2, column=4).value = f": {sales.count()}"
-    
-    ws.merge_cells(start_row=summary_row + 2, start_column=6, end_row=summary_row + 2, end_column=8)
-    ws.cell(row=summary_row + 2, column=6).value = "Total Discount"
-    ws.merge_cells(start_row=summary_row + 2, start_column=9, end_row=summary_row + 2, end_column=11)
-    ws.cell(row=summary_row + 2, column=9).value = f": {float(total_discount)}"
+    summary_data = [
+        # (Row offset, Left Label, Left Val, Right Label, Right Val)
+        (2, "Total Orders", sales.count(), "Total Discount", float(total_discount)),
+        (3, "Total Items Sold", total_qty, "Total Taxable Amount", float(total_taxable)),
+        (4, "Total Sale Amount", float(total_sale), "Total Received", float(total_received)),
+        (5, "", "", "Total Balance", float(total_balance)) # Left side empty for Balance row
+    ]
 
-    # Row 2: Total Items Sold & Total Taxable Amount
-    ws.merge_cells(start_row=summary_row + 3, start_column=1, end_row=summary_row + 3, end_column=3)
-    ws.cell(row=summary_row + 3, column=1).value = "Total Items Sold"
-    ws.merge_cells(start_row=summary_row + 3, start_column=4, end_row=summary_row + 3, end_column=5)
-    ws.cell(row=summary_row + 3, column=4).value = f": {total_qty}"
-    
-    ws.merge_cells(start_row=summary_row + 3, start_column=6, end_row=summary_row + 3, end_column=8)
-    ws.cell(row=summary_row + 3, column=6).value = "Total Taxable Amount"
-    ws.merge_cells(start_row=summary_row + 3, start_column=9, end_row=summary_row + 3, end_column=11)
-    ws.cell(row=summary_row + 3, column=9).value = f": {float(total_taxable)}"
-
-    ws.merge_cells(start_row=summary_row + 4, start_column=1, end_row=summary_row + 4, end_column=3)
-    ws.cell(row=summary_row + 4, column=1).value = "Total Sale Amount"
-    ws.merge_cells(start_row=summary_row + 4, start_column=4, end_row=summary_row + 4, end_column=5)
-    ws.cell(row=summary_row + 4, column=4).value = f": {float(total_sale)}"
-    
-    ws.merge_cells(start_row=summary_row + 4, start_column=6, end_row=summary_row + 4, end_column=8)
-    ws.cell(row=summary_row + 4, column=6).value = "Total Received"
-    ws.merge_cells(start_row=summary_row + 4, start_column=9, end_row=summary_row + 4, end_column=11)
-    ws.cell(row=summary_row + 4, column=9).value = f": {float(total_received)}"
-
-    for r in range(summary_row + 2, summary_row + 5):
-        for col in range(1, 6):
-            cell = ws.cell(row=r, column=col)
+    for offset, left_label, left_val, right_label, right_val in summary_data:
+        current_r = summary_row + offset
+        
+        if left_label:
+            ws.merge_cells(start_row=current_r, start_column=1, end_row=current_r, end_column=3)
+            ws.cell(row=current_r, column=1).value = left_label
+            
+            ws.merge_cells(start_row=current_r, start_column=4, end_row=current_r, end_column=5)
+            ws.cell(row=current_r, column=4).value = f": {left_val}"
+            
+            for col in range(1, 6):
+                cell = ws.cell(row=current_r, column=col)
+                cell.border = thin_border
+                cell.font = bold_font
+                cell.alignment = Alignment(horizontal='left', vertical='center')
+        
+        ws.merge_cells(start_row=current_r, start_column=6, end_row=current_r, end_column=8)
+        ws.cell(row=current_r, column=6).value = right_label
+        
+        ws.merge_cells(start_row=current_r, start_column=9, end_row=current_r, end_column=11)
+        ws.cell(row=current_r, column=9).value = f": {right_val}"
+        
+        for col in range(6, 12):
+            cell = ws.cell(row=current_r, column=col)
             cell.border = thin_border
             cell.font = bold_font
             cell.alignment = Alignment(horizontal='left', vertical='center')
-
-        for col in range(6, 12):
-            cell = ws.cell(row=r, column=col)
-            cell.border = thin_border
-            if col >= 9:
-                cell.font = bold_font
-            cell.alignment = Alignment(horizontal='left', vertical='center')
+            
+            if right_label == "Total Balance":
+                cell.font = Font(bold=True, color="FF0000" if total_balance > 0 else "000000")
     # COLUMN WIDTHS
     widths = {'A': 8, 'B': 12, 'C': 15, 'D': 15, 'E': 35, 'F': 12, 'G': 12, 'H': 15, 'I': 15, 'J': 15, 'K': 18}
     for col, width in widths.items():
