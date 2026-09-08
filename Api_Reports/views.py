@@ -10,6 +10,7 @@ from django.utils.timezone import now
 from openpyxl.styles import Font, Alignment, Border, Side
 from datetime import datetime
 from django.db.models import Sum, Count
+from Api_Master_Tables.views import get_valid_admin
 
 
 # Create your views here.
@@ -17,6 +18,9 @@ from django.db.models import Sum, Count
 # SALES REPORT---------------------------------------------------
 @api_view(['GET'])
 def sales_report(request, from_date, to_date):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
     to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
     orders = OrderSummary.objects.filter(date__range=[from_date, to_date])
@@ -26,6 +30,9 @@ def sales_report(request, from_date, to_date):
 # PRODUCT SALES REPORT-------------------------------------------
 @api_view(['GET'])
 def product_sales_report(request, from_date, to_date):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
     to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
     products = OrderDetails.objects.filter(date__range=[from_date, to_date])
@@ -35,6 +42,9 @@ def product_sales_report(request, from_date, to_date):
 # PAYMENT REPORT------------------------------------------------
 @api_view(['GET'])
 def payment_report(request, from_date, to_date):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
     to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
     payments = PaymentTransaction.objects.filter(date__range=[from_date, to_date])
@@ -44,6 +54,9 @@ def payment_report(request, from_date, to_date):
 # PIVOT TABLE REPORT--------------------------------------------
 @api_view(['GET'])
 def pivot_report(request, from_date, to_date):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     from_date = datetime.strptime(from_date,"%d-%m-%Y").date()
     to_date = datetime.strptime(to_date,"%d-%m-%Y").date()
     report = OrderDetails.objects.filter(date__range=[from_date, to_date]).values('product_id','product__name','order__payment_status').annotate(
@@ -53,7 +66,11 @@ def pivot_report(request, from_date, to_date):
     return Response(report)
 
 #PDF GENERATER-------------------------
+@api_view(['GET'])
 def get_date_range(request):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     from_date = request.GET.get('from_date')
     from_date = request.GET.get('from_date')
     to_date = request.GET.get('to_date')
@@ -63,7 +80,11 @@ def get_date_range(request):
     to_date = datetime.strptime(to_date, '%d-%m-%Y').date()
     return from_date, to_date
 
+@api_view(['GET'])
 def generate_pdf_report(request, from_date=None, to_date=None):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     from_date = datetime.strptime(from_date, "%d-%m-%Y").date()
     to_date = datetime.strptime(to_date, "%d-%m-%Y").date()
     
@@ -107,7 +128,11 @@ def generate_pdf_report(request, from_date=None, to_date=None):
     return response
 
 #EXCEL GENERATER-------------------------------------------
+@api_view(['GET'])
 def generate_excel_report(request, from_date, to_date):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     from_date = datetime.strptime(from_date, "%d-%m-%Y").date()
     to_date = datetime.strptime(to_date, "%d-%m-%Y").date()
     

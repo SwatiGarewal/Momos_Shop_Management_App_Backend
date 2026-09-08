@@ -8,7 +8,7 @@ class OrderDetailsSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class OrderSummarySerializer(serializers.ModelSerializer):
-    created_by = serializers.CharField(source='created_by.first_name', read_only=True)
+    created_by = serializers.CharField(source='created_by.name', read_only=True)
     date = serializers.DateField(format="%d-%m-%Y")
     class Meta:
         model = OrderSummary

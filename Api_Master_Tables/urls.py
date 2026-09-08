@@ -3,7 +3,8 @@ from .views import *
 urlpatterns = [
 
 #User Master Table-----------------------------------------------
-    path('api/user-master-table/login-user/', login_user),
+    path('api/customer/login/', customer_login),
+    path('api/admin/login/', admin_login),
     path('api/user-master-table/all-users/', get_users),
     path('api/user-master-table/add-user/', add_user),
     path('api/user-master-table/user/<int:id>/',get_single_user),

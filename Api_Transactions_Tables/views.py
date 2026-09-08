@@ -5,8 +5,6 @@ from .models import *
 from Api_Master_Tables.models import *
 from django.shortcuts import get_object_or_404
 from decimal import Decimal
-from rest_framework.permissions import IsAuthenticated
-from rest_framework.decorators import permission_classes
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Sum
@@ -15,20 +13,31 @@ from datetime import datetime
 
 # Create your views here.
 
+# HELPER: Check active customer/user by id --------------------------------
+def get_valid_user(request):
+    user_id = request.session.get('user_master_id')
+    if not user_id:
+        return None, Response({"error": "Please login first"}, status=401)
+    user = UserMaster.objects.filter(id=user_id, active_status=True).first()
+    if not user:
+        return None, Response({"error": "Invalid or inactive user"}, status=403)
+    return user, None
+
+
 # CREATE ORDER-----------------------------------------------------------
 @transaction.atomic
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def create_order(request):
-  if not request.user.is_active:
-      return Response({"error": "User account is deactivated"})
+  current_user, error = get_valid_user(request)
+  if error:
+      return error
   try:
     items = request.data.get('items', [])
     if not items:
       return Response({"error": "No items provided"})
     cash_discount = Decimal(request.data.get('cash_discount', '0.00'))
     # create order summary
-    order = OrderSummary.objects.create(created_by=request.user)
+    order = OrderSummary.objects.create(created_by=current_user)
     created_items = []
     # loop through all items
     for item in items:
@@ -148,9 +157,11 @@ def adjust_stock(old_product, new_product, old_quantity, new_quantity):
 
 # UPDATE COMPLETE ORDER --------------------------------------------------
 @api_view(['PUT'])
-@permission_classes([IsAuthenticated])
 @transaction.atomic
 def update_order(request, order_id):
+    current_user, error = get_valid_user(request)
+    if error:
+        return error
     order = get_object_or_404(OrderSummary,order_id=order_id)
     items = request.data.get("items", [])
     deleted_items = request.data.get("deleted_items", [])
@@ -250,16 +261,20 @@ def update_order(request, order_id):
 
 # CREATE PAYMENT--------------------------------------------------------
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
 def create_payment(request):
-    if not request.user.is_active:
-       return Response({"error": "User account is deactivated"})
-    order_id = request.data['order']
+    current_user, error = get_valid_user(request)
+    if error:
+        return error
+    order_id = request.data.get('order_id')
+    if not order_id:
+        return Response({"error": "order_id is required"}, status=400)
     amount_received = Decimal(request.data['amount_received'])
     payment_mode_id = request.data["payment_mode_id"]   
     remarks = request.data.get('remarks','')
     payment_mode = get_object_or_404(PaymentModeMaster,payment_mode_id=payment_mode_id,active_status=True)
     order = get_object_or_404(OrderSummary,order_id=order_id)
+    if order.payment_status == 'Paid':
+       return Response({"error": "This order is already fully paid"}, status=400)
     if amount_received > order.net_amount_payable:
        return Response({"error": "Amount exceeds payable bill amount"})
     total_paid = PaymentTransaction.objects.filter(order=order).aggregate(total=Sum('amount_received'))['total'] or Decimal('0.00')

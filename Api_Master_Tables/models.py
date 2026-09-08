@@ -9,7 +9,7 @@ class UserMaster(models.Model):
     username = models.CharField(max_length=100,unique=True)
     password = models.CharField(max_length=255)
     name = models.CharField(max_length=100)
-    account_type = models.CharField(max_length=20,choices=ACCOUNT_TYPES)
+    account_type = models.CharField(max_length=20,choices=ACCOUNT_TYPES,default='Standard')
     active_status = models.BooleanField(default=True)
     def save(self, *args, **kwargs):
         if not self.password.startswith('pbkdf2_'):
@@ -36,3 +36,17 @@ class PaymentModeMaster(models.Model):
     active_status = models.BooleanField(default=True)
     def __str__(self):
         return self.name
+
+# ADMIN MASTER (Proxy of UserMaster) --------------------------
+class AdminMaster(UserMaster):
+    class Meta:
+        proxy = True
+        verbose_name = "Admin Master"
+        verbose_name_plural = "Admin Masters"
+
+# CUSTOMER MASTER (Proxy of UserMaster) --------------------------
+class CustomerMaster(UserMaster):
+    class Meta:
+        proxy = True
+        verbose_name = "Customer Master"
+        verbose_name_plural = "Customer Masters"

@@ -5,7 +5,8 @@ from .models import *
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserMaster
-        fields = '__all__'
+        fields = ['id', 'username', 'name', 'account_type', 'active_status']
+
 
 class ProductSerializer(serializers.ModelSerializer):
     class Meta:

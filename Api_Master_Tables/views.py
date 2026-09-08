@@ -2,12 +2,11 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from .models import *
 from .serializers import *
+from django.contrib.auth import login as django_login
+from django.contrib.auth.models import User
+from django.contrib.auth.hashers import check_password
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import permission_classes
-from rest_framework.permissions import IsAdminUser
-from django.contrib.auth import authenticate
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.contrib.auth.models import User
 from openpyxl import load_workbook
 from django.conf import settings
 from django.db import transaction
@@ -15,108 +14,183 @@ import os
 
 # Create your views here.
 
-#LOGIN USER---------------------------------------------------------------
+# HELPER: Check Admin user_id --------------------------------
+def get_valid_admin(request):
+    user_id = request.session.get('user_master_id')
+    if not user_id:
+        return None, Response({"error": "Please login first"}, status=401)
+    admin_user = UserMaster.objects.filter(id=user_id, account_type='Admin', active_status=True).first()
+    if not admin_user:
+        return None, Response({"error": "Not authorized as Admin"}, status=403)
+    return admin_user, None
+
+# CUSTOMER LOGIN ------------------------------------------------
 @api_view(['POST'])
-def login_user(request):
+def customer_login(request):
     username = request.data.get('username')
     password = request.data.get('password')
-    user = authenticate(username=username, password=password)
-    if user is None:
-        return Response({"error": "Invalid Username or Password"})
-    if not user.is_active:
-        return Response({"error": "User account is deactivated"})
-    refresh = RefreshToken.for_user(user)
+
+    if not username or not password:
+        return Response({"error": "Username and Password are required"}, status=400)
+
+    try:
+        user = UserMaster.objects.get(username=username)
+    except UserMaster.DoesNotExist:
+        return Response({"error": "Invalid Username or Password"}, status=401)
+
+    if user.account_type != "Standard":
+        return Response({"error": "Only Customer can login"}, status=403)
+
+    if not user.active_status:
+        return Response({"error": "User account is deactivated"}, status=403)
+
+    if not check_password(password, user.password):
+        return Response({"error": "Invalid Username or Password"}, status=401)
+
+    # AUTOMATIC SESSION CREATE ---------------------
+    django_user, created = User.objects.get_or_create(username=user.username)
+    django_login(request, django_user)
+
+    request.session['user_master_id'] = user.id  # yahi automatically future requests me milega
+
     return Response({
-        "message": "Login Successful",
-        "access": str(refresh.access_token),
-        "refresh": str(refresh)})
+        "message": "Customer Login Successful",
+        "customer": {
+            "id": user.id,
+            "username": user.username,
+            "name": user.name,
+            "account_type": user.account_type
+        }
+    })
+
+# ADMIN LOGIN ------------------------------------------------
+@api_view(['POST'])
+def admin_login(request):
+
+    username = request.data.get('username')
+    password = request.data.get('password')
+
+    if not username or not password:
+        return Response({
+            "error": "Username and Password are required"
+        }, status=400)
+
+    try:
+        user = UserMaster.objects.get(username=username)
+    except UserMaster.DoesNotExist:
+        return Response({
+            "error": "Invalid Username or Password"
+        }, status=401)
+
+    if user.account_type != "Admin":
+        return Response({
+            "error": "Only Admin can login"
+        }, status=403)
+
+    if not user.active_status:
+        return Response({
+            "error": "User account is deactivated"
+        }, status=403)
+
+    if not check_password(password, user.password):
+        return Response({
+            "error": "Invalid Username or Password"
+        }, status=401)
+
+    django_user, created = User.objects.get_or_create(username=user.username)
+    django_login(request, django_user)
+    request.session['user_master_id'] = user.id
+
+    return Response({
+        "message": "Admin Login Successful",
+        "admin": {
+            "id": user.id,
+            "username": user.username,
+            "name": user.name,
+            "account_type": user.account_type
+        }
+    })
 
 # GET ALL USERS -----------------------------------------
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
 def get_users(request):
-    users = UserMaster.objects.all().values()
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
+    users = UserMaster.objects.all().values('id', 'username', 'name', 'account_type', 'active_status')
     return Response(users)
 
 # ADD USER ----------------------------------------------
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
 def add_user(request):
     username = request.data.get('username')
     password = request.data.get('password')
     name = request.data.get('name')
     account_type = request.data.get('account_type')
-    if User.objects.filter(username=username).exists():
-       return Response({"error": "Username already exists"})
-    django_user = User.objects.create_user(
-    username=username,
-    password=password,
-    first_name=name)
+
+    if not username or not password or not name:
+        return Response({"error": "username, password and name are required"}, status=400)
+
+    if UserMaster.objects.filter(username=username).exists():
+        return Response({"error": "Username already exists"})
+
     if account_type == 'Admin':
-     django_user.is_staff = True
-     django_user.save()
+        admin_exists = UserMaster.objects.filter(account_type='Admin').exists()
+        if admin_exists:
+            admin_user, error = get_valid_admin(request)
+            if error:
+                return error
+
     user = UserMaster.objects.create(
-    username=username,
-    password=password,
-    name=name,
-    account_type=account_type)
+        username=username,
+        password=password,
+        name=name,
+        account_type=account_type)
+
     return Response({
         "message": "User Added Successfully",
         "username": user.username})
 
 # GET SINGLE USER -----------------------------------------
 @api_view(['GET'])
-@permission_classes([IsAdminUser])
 def get_single_user(request, id):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     user = get_object_or_404(UserMaster, id=id)
     serializer = UserSerializer(user)
     return Response(serializer.data)
 
 # UPDATE USER -----------------------------------------
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
 def update_user(request, id):
-    if not request.user.is_staff:
-        return Response({"error": "Only Admin can perform this action"})
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     user_master = get_object_or_404(UserMaster, id=id)
-    django_user = get_object_or_404(User, username=user_master.username)
     username = request.data.get("username", user_master.username)
     name = request.data.get("name", user_master.name)
     account_type = request.data.get("account_type", user_master.account_type)
-    # Update UserMaster
     user_master.username = username
     user_master.name = name
     user_master.account_type = account_type
     if request.data.get("password"):
         user_master.password = request.data.get("password")
     user_master.save()
-    # Update Django User
-    django_user.username = username
-    django_user.first_name = name
-    if request.data.get("password"):
-        django_user.set_password(request.data.get("password"))
-    if account_type == "Admin":
-        django_user.is_staff = True
-    else:
-        django_user.is_staff = False
-    django_user.save()
-    return Response({
-        "message": "User Updated Successfully"
-    })
+    return Response({"message": "User Updated Successfully"})
 
 # UPDATE USER STATUS -----------------------------------------
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
 def update_user_status(request, id):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     user_master = get_object_or_404(UserMaster, id=id)
-    django_user = get_object_or_404(User, username=user_master.username)
     status = request.data.get("active_status")
     if status is None:
         return Response({"error": "active_status field is required"})
     user_master.active_status = status
     user_master.save()
-    django_user.is_active = status
-    django_user.save()
     return Response({
         "message": "User Status Updated Successfully",
         "active_status": status
@@ -131,12 +205,10 @@ def get_products(request):
 
 # ADD PRODUCT------------------------------------------------
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
 def add_product(request):
-   if not request.user.is_staff:
-    return Response({"error": "Only Admin can perform this action"})
-   if not request.user.is_active:
-    return Response({"error": "User account is deactivated"})
+   admin_user, error = get_valid_admin(request)
+   if error:
+       return error
    serializer = ProductSerializer(data=request.data)
    if serializer.is_valid():
         serializer.save()
@@ -152,12 +224,10 @@ def get_single_product(request, id):
 
 # UPDATE PRODUCT-------------------------------------------------
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
 def update_product(request, id):
-    if not request.user.is_staff:
-      return Response({"error": "Only Admin can perform this action"})
-    if not request.user.is_active:
-      return Response({"error": "User account is deactivated"})
+    admin_user, error = get_valid_admin(request)
+    if error:
+       return error
     product = get_object_or_404(ProductMaster,id=id)
     serializer = ProductSerializer(product, data=request.data,partial=True)
     if serializer.is_valid():
@@ -167,12 +237,10 @@ def update_product(request, id):
 
 #PRODUCT STATUS------------------------------------------------
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
 def update_product_status(request, id):
-    if not request.user.is_staff:
-       return Response({"error": "Only Admin can perform this action"})
-    if not request.user.is_active:
-        return Response({"error": "User account is deactivated"})
+    admin_user, error = get_valid_admin(request)
+    if error:
+       return error
     product = get_object_or_404(ProductMaster,id=id)
     is_active = request.data.get('is_active')
     if is_active is None:return Response({"error":"is_active field is required"},status=400)
@@ -187,9 +255,14 @@ def update_product_status(request, id):
 
 # ADD PAYMENT MODE --------------------------------
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
 def add_payment_mode(request):
-    name = " ".join(request.data.get("name").split()).strip()
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
+    raw_name = request.data.get("name")
+    if not raw_name:
+        return Response({"error": "name is required"}, status=400)
+    name = " ".join(raw_name.split()).strip()
     if PaymentModeMaster.objects.filter(name__iexact=name).exists():
        return Response({"error": "Payment Mode Already Exists"})
     payment_mode = PaymentModeMaster.objects.create(name=name)
@@ -212,10 +285,10 @@ def get_single_payment_mode(request, id):
 
 # UPDATE PAYMENT MODE -----------------------------------------
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
 def update_payment_mode(request, id):
-    if not request.user.is_staff:
-        return Response({"error": "Only Admin can perform this action"})
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     payment_mode = get_object_or_404(
         PaymentModeMaster,
         payment_mode_id=id)
@@ -231,8 +304,10 @@ def update_payment_mode(request, id):
 
 # UPDATE PAYMENT MODE STATUS -----------------------------------------
 @api_view(['PUT'])
-@permission_classes([IsAdminUser])
 def update_payment_mode_status(request, id):
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     payment_mode = get_object_or_404(
         PaymentModeMaster,
         payment_mode_id=id)
@@ -249,10 +324,10 @@ def update_payment_mode_status(request, id):
 # IMPORT PRODUCTS FROM EXCEL ------------------------------------------
 @transaction.atomic
 @api_view(['POST'])
-@permission_classes([IsAdminUser])
 def import_products(request):
-    if not request.user.is_staff:
-        return Response({"error": "Only Admin can perform this action"})
+    admin_user, error = get_valid_admin(request)
+    if error:
+        return error
     if 'file' not in request.FILES:
         return Response({"error": "Excel file is required"})
     excel_file = request.FILES['file']
